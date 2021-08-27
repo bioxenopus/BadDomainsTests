@@ -1,0 +1,94 @@
+
+void TestSimple() {
+    string request{"ya.n.ru"};
+    vector<string> answer{"ya","n","ru"};
+    vector<string_view> result=Split(request, ".");
+    ASSERT(result[0].size());
+    for(size_t i=0;i<answer.size()&&i<result.size();i++){
+        ASSERT_EQUAL(answer[i], result[i]);
+    }
+}
+
+void TestReversed(){
+    Domain domain("maps.ya.ru");
+    ASSERT_EQUAL(*(domain.GetParts().begin()), *(--domain.GetReversedParts().end()));
+    ASSERT_EQUAL(*(--domain.GetParts().end()), *(domain.GetReversedParts().begin()));
+}
+
+void TestEqual(){
+    Domain left("maps.ya.ru");
+    Domain right("maps.ya.ru");
+    bool one = IsSubOrSuperDomain(left, right);
+    bool two = IsSubOrSuperDomain(right, left);
+    bool three = IsSubdomain(left, right);
+    ASSERT(one);
+    ASSERT(two);
+    ASSERT(three);
+    vector<Domain>data{left};
+    DomainChecker checker(data.begin(), data.end());
+    ASSERT(checker.IsSubdomain(right));
+}
+
+void TestWrongOrder(){
+    Domain left("maps.ya.ru");
+    Domain right("ya.ru");
+    ASSERT(IsSubdomain(left, right));
+    ASSERT(!IsSubdomain(right, left));
+}
+
+void TestAbsorbtion(){
+    vector<Domain> domains;
+    domains.emplace_back("my.yandex.ru");
+    domains.emplace_back("ru");
+    domains.emplace_back("yandex.ru");
+    DomainChecker checker(domains.begin(), domains.end());
+    ASSERT(checker.IsSubdomain(Domain("z.yandex.ru")));
+    domains[1]=Domain("AAA");
+    ASSERT(!checker.IsSubdomain(Domain("yandex.ru")));
+    ASSERT(!checker.IsSubdomain(Domain("ru")));
+}
+
+void TestCheckSubdomains(){
+    vector<Domain> banneddomains;
+    banneddomains.emplace_back("my.yandex.ru");
+    banneddomains.emplace_back("google.ru");
+    banneddomains.emplace_back("car.yandex.ru");
+    vector<Domain> domains;
+    domains.emplace_back("my.yandex.ru");
+    domains.emplace_back("ru");
+    domains.emplace_back("ttt.car.yandex.ru");
+    domains.emplace_back("ttt.my.yandex.ru");
+    domains.emplace_back("ttt.yyy.google.ru");
+    DomainChecker checker(banneddomains.begin(), banneddomains.end());
+    ASSERT(checker.IsSubdomain(domains[0]));
+    ASSERT(!checker.IsSubdomain(domains[1]));
+    ASSERT(checker.IsSubdomain(domains[2]));
+    ASSERT(checker.IsSubdomain(domains[3]));
+    ASSERT(checker.IsSubdomain(domains[4]));
+}
+
+void TestRightOrder(){
+    vector<Domain> banneddomains;
+    banneddomains.emplace_back("my.yandex.ru");
+    banneddomains.emplace_back("google.ru");
+    banneddomains.emplace_back("car.yandex.ru");
+    vector<Domain> domains;
+    domains.emplace_back("my.yandex.ru");
+    domains.emplace_back("ru");
+    domains.emplace_back("ttt.car.yandex.ru");
+    auto result = CheckDomains(banneddomains, domains);
+    ASSERT(!result[0]);
+    ASSERT(result[1]);
+    ASSERT(!result[2]);
+}
+
+void TestReadDomains(){
+    istringstream istr(R"(3
+
+map.ya.ru
+ya.ru
+tt.map.ya.ru)");
+  const vector<Domain> banned_domains = ReadDomains(istr);
+  ASSERT_EQUAL(banned_domains.size(), 3u);
+  ASSERT(banned_domains[0].GetPartCount());
+}
